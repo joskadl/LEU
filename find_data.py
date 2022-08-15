@@ -4,7 +4,8 @@ from functools import reduce
 from pathlib import Path
 import zipfile
 
-data_directory = Path(r"C:\Users\jla23480\Downloads\Data").glob("**/*")  # Directory containing all data
+data_directory = Path(r"C:\Users\jla23480\Downloads\Data")
+data_directory_contents = data_directory.glob("**/*")  # Directory containing all data
 filetypes_of_interest = [".shp", ".mdb", ".gml", ".gdb", ".zip"]
 
 
@@ -15,7 +16,7 @@ def list_zip_contents(file: Path) -> list:
 
 
 # Get all .zip, .shp, .mdb and .gml file paths
-files = [x for x in data_directory if x.suffix in filetypes_of_interest]
+files = [x for x in data_directory_contents if x.suffix in filetypes_of_interest]
 
 # For all .zip files, replace entry with entry appended with internal file paths wit relevant suffix
 files = [list_zip_contents(file) if file.suffix == ".zip" else [file] for file in files]
@@ -24,4 +25,4 @@ files = [list_zip_contents(file) if file.suffix == ".zip" else [file] for file i
 files = reduce(add, files)
 
 for file in files:
-    print(file)
+    print(file.relative_to(data_directory))
