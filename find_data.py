@@ -13,7 +13,7 @@ def list_zip_contents(file: Path) -> list:
 
 
 # Get all .zip, .shp, .mdb and .gml file paths
-files = [x for x in data_directory if x.is_file() and x.suffix in filetypes_of_interest]
+files = [x for x in data_directory if x.suffix in filetypes_of_interest]
 
 # For all .zip files, replace entry with entry appended with internal file paths wit relevant suffix
 files = [list_zip_contents(file) if file.suffix == ".zip" else file for file in files]
