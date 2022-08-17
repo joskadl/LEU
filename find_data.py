@@ -25,30 +25,15 @@ files = [list_zip_contents(file) if file.suffix == ".zip" else [file] for file i
 # Unpack lists of nested paths from .zip files to one list of all relevant file paths
 files = reduce(add, files)
 
-relative_path = Path()  # Path to compare next filepath to
+# Create a tree of all relevant folders and files
+separator = "\t"  # Separator for CSV file (comma or semicolon for Excel readability)
+previous_path = Path()  # Path to compare next filepath to
 for filepath in files:
-    # For all new parts in filepath, print a newline for this part, preceded by appropriate number of tabs
+    filepath = filepath.relative_to(data_directory)
+    shared_path_length = len([x for x, y in zip(previous_path.parts, filepath.parts) if x == y])
 
-    # Check how many elements match previous path
-    shared_path = [x for x, y in zip(relative_path.parts, filepath.parts) if x == y]
+    # For all new parts in filepath, print a newline for this part, preceded by appropriate number of separators
+    for n in range(shared_path_length, len(filepath.parts)):
+        print(f"{separator*n}{filepath.parts[n]}")
 
-    print(filepath.relative_to(data_directory))
-
-"""
-Example tree:
-----
-Data
-        Levering 2010
-                Gelderland
-                        Database.zip
-                                GE_Nunspeet...
-                                Database_Polygon...
-                        Lijnen.shp
-                        Punten.shp
-                        Vlakken.shp
-                Noordholland
-                        MKLE.zip
-                            beemster_mon.shp
-                            schermer_mon.shp
-
-"""
+    previous_path = filepath  # Remember filepath to compare next path with
