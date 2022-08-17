@@ -14,7 +14,7 @@ polygon_layers = []
 empty_layers_attach = []
 empty_layers_other = []
 for layer in layers:
-    layer_content = gpd.read_file('./MAC2020_totaal.gdb/', layer=layer)
+    layer_content = gpd.read_file('../MAC2020_totaal.gdb/', layer=layer)
     if len(layer_content.geom_type) > 0:
         geom_type = layer_content.geom_type[0]
         if geom_type == "Point":
@@ -34,7 +34,7 @@ for layer in layers:
 # TODO: do this for points, lines, polygons
 column_names_sets = []
 for layer in point_layers:
-    layer_content = gpd.read_file('./MAC2020_totaal.gdb/', layer=layer)
+    layer_content = gpd.read_file('../MAC2020_totaal.gdb/', layer=layer)
     column_names_sets.append(set(layer_content.columns))
 
 # print(column_names)
