@@ -1,11 +1,11 @@
 import geopandas as gpd
 import fiona
 
-# Find all gdb files, and make overview of
+gdb_file = './MAC2020_totaal.gdb/'
 
-# Find all layers in these gdb files
-layers = fiona.listlayers("./MAC2020_totaal.gdb/")
-# TODO: this should be a loop over gdb files later
+# Find all layers in a given .gdb file
+# TODO: this should be a loop over all relevant .gdb files later
+layers = fiona.listlayers(gdb_file)
 
 # Sort layers by geometry type
 point_layers = []
@@ -14,7 +14,7 @@ polygon_layers = []
 empty_layers_attach = []
 empty_layers_other = []
 for layer in layers:
-    layer_content = gpd.read_file('../MAC2020_totaal.gdb/', layer=layer)
+    layer_content = gpd.read_file(gdb_file, layer=layer)
     if len(layer_content.geom_type) > 0:
         geom_type = layer_content.geom_type[0]
         if geom_type == "Point":
@@ -23,6 +23,7 @@ for layer in layers:
             line_layers.append(layer)
         if geom_type == "MultiPolygon":
             polygon_layers.append(layer)
+    # Sort empty layers by type
     else:
         if "ATTACH" in layer:
             empty_layers_attach.append(layer)
@@ -34,23 +35,16 @@ for layer in layers:
 # TODO: do this for points, lines, polygons
 column_names_sets = []
 for layer in point_layers:
-    layer_content = gpd.read_file('../MAC2020_totaal.gdb/', layer=layer)
+    layer_content = gpd.read_file(gdb_file, layer=layer)
     column_names_sets.append(set(layer_content.columns))
 
-# print(column_names)
-
-common_column_names = set.intersection(*column_names_sets)
+common_column_names = set.intersection(*column_names_sets)  # Column names occurring in all point layers
 print(f"{common_column_names=}")
 
 for column_names in column_names_sets:
     # TODO: incorporate layer name
     non_common_names = column_names - common_column_names
     print(sorted(non_common_names))
-
-# print(f"{len(point_layers)=}, {len(line_layers)=}, {len(polygon_layers)=}")
-# print(line_layers)
-# print(empty_layers_attach)
-# print(empty_layers_other)
 
 """
 TODO:
