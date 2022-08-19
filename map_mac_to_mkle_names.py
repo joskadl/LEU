@@ -4,7 +4,7 @@ import fiona
 gdb_file = './MAC2020_totaal.gdb/'
 
 # Find all layers in a given .gdb file
-# TODO: this should be a loop over all relevant .gdb files later
+# TODO: this should be a loop over all relevant .gdb files later (and shapefiles?)
 layers = fiona.listlayers(gdb_file)
 
 # Sort layers by geometry type
@@ -46,13 +46,20 @@ for column_names in column_names_sets:
     non_common_names = column_names - common_column_names
     print(sorted(non_common_names))
 
+
 """
 TODO:
-- Get overview of all .gdb files
-- Get overview of all layers in these files, with corresponding geometries
-- Get field names of all layers
-  - Sort by type
-  - Check overlap in field names, e.g. to check miss-spellings (intersection and difference)
+- This script should yield a CSV file with the mapping from used (MAC) names to desired (KLEi) names
+- The column headers for this file will be as follows:
+  - 'geom_type': indicates the type of the layer ('points', 'lines', or 'polygons')
+  - 'source': the column names used in the source data
+  - 'target': the MKLE-name to which this source name should map (from KLEi set)
+  - 'common': indicates whether or not this source name occurs in all source data of the current geom_type
+
+Notes:
+- Using a command line interface, users will be prompted to pick (numerically) which KLEi-name a source name should be mapped to
+  - Answers are stored in a mapping file, to save time when running this script again
+  - This mapping file will be in plain-text, and can be checked or amended manually if needed
 - Some data may exist as .shp files instead of .gdb -> check where these exist
   - Get field names of .shp files
 - When there is redundancy (e.g. .shp and .gdb) check for duplicates, and decide which to use
