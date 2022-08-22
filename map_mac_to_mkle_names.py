@@ -2,6 +2,11 @@ import geopandas as gpd
 import fiona
 
 gdb_file = './MAC2020_totaal.gdb/'
+klei_names_file = './python_scripts/klei_names.txt'
+
+# Get dictionary linking 'Punt', 'Vlak' and 'Lijn' to their KLEi names
+with open(klei_names_file) as f:
+    klei_names = {line.split(":")[0]: [x.strip() for x in line.split(":")[1].split(",")] for line in f.readlines()}
 
 # Find all layers in a given .gdb file
 # TODO: this should be a loop over all relevant .gdb files later (and shapefiles?)
@@ -57,7 +62,8 @@ TODO:
   - 'common': indicates whether or not this source name occurs in all source data of the current geom_type
 
 Notes:
-- Using a command line interface, users will be prompted to pick (numerically) which KLEi-name a source name should be mapped to
+- Using a command line interface, users will be prompted to pick (numerically) 
+  which KLEi-name a source name should be mapped to
   - Answers are stored in a mapping file, to save time when running this script again
   - This mapping file will be in plain-text, and can be checked or amended manually if needed
 - Some data may exist as .shp files instead of .gdb -> check where these exist
