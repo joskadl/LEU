@@ -20,7 +20,8 @@ layers = fiona.listlayers(gdb_file)
 names = dict()
 for layer in layers:
     layer_content = gpd.read_file(gdb_file, layer=layer)
-    if len(layer_content.geom_type) > 0:  # Ignore layers without geom_type
+    # Ignore layers without geom_type
+    if len(layer_content.geom_type) > 0 and layer_content.geom_type[0] is not None:
         geom_type = layer_content.geom_type[0]
         if geom_type not in names:
             names[geom_type] = [
@@ -40,6 +41,23 @@ for layer in layers:
                 {x: "common" if x in common_columns else "not common"}
                 for x in all_columns
             ]
+
+
+# Write a CSV file showing source names for all geom_types, indicating whether these are shared by all layers
+# of this geom_type, along with proposed target (KLEi) name
+separator = ";"  # CSV separator for Excel readability
+with open("mapping.csv", "w") as f:
+    # Write CSV headers
+    f.write(separator.join(["geom_type", "source", "target", "common"]) + "\n")
+    for geom_type in names.keys():
+        for name in names[geom_type]:
+            # TODO: include target name in CSV
+            f.write(
+                separator.join(
+                    [geom_type, list(name.keys())[0], "N/A", list(name.values())[0]]
+                )
+                + "\n"
+            )
 
 
 """
