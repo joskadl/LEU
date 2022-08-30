@@ -11,6 +11,7 @@ with open(klei_names_file) as f:
         for line in f.readlines()
     }
 
+
 # TODO: this should be a loop over all relevant .gdb files later (and shapefiles?)
 # Find all layers in a given .gdb file
 layers = fiona.listlayers(gdb_file)
@@ -41,6 +42,25 @@ for layer in layers:
                 {x: "common" if x in common_columns else "not common"}
                 for x in all_columns
             ]
+
+# Make a dictionary that maps found names to acceptable KLEi target names (or ###-nader_bepalen or ###-laten_vervallen)
+# Loop over found names for each geom_type, and if no mapping found for that name+geom_type,
+# propose numbered list of KLEi names
+# Write new mapping to file immediately, so manual entry can be paused and continued when code exits
+# TODO: Should I map names automatically if they exist in KLEi names set? Or enforce manual choices?
+# TODO: Read file to make dictionary that maps MAC to KLEi names, where they have been entered already
+mapping = dict()
+with open("mac_to_klei.txt", "w") as f:
+    for geom_type in names.keys():
+        for name in names[geom_type]:
+            # Propose numbered list of KLEi names to choose from
+            options = ["###-nader_bepalen", "###-laten_vervallen"] + klei_names[geom_type]
+            for number, option in enumerate(options):
+                print(f"{number}: {option}")
+            # TODO: handle incorrect user input elegantly
+            choice = input(f"What KLEi name does {list(name.keys())[0]} correspond to? Pick a number listed above and press enter:")
+            print(f"{list(name.keys())[0]} is now mapped to {options[int(choice)]} for geom_type {geom_type}.")
+            # TODO: the actual mapping and writing to file
 
 
 # Write a CSV file showing source names for all geom_types, indicating whether these are shared by all layers
