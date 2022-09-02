@@ -1,8 +1,12 @@
 import geopandas as gpd
 import fiona
+from pathlib import Path
+
+# Note: this script may require to be run from a conda virtual environment
 
 gdb_file = "./MAC2020_totaal.gdb/"
 klei_names_file = "./python_scripts/klei_names.txt"
+separator = ";"  # CSV separator for Excel readability
 
 # Make dictionary linking 'Punt', 'Vlak' and 'Lijn' to their KLEi target names
 with open(klei_names_file) as f:
@@ -48,25 +52,48 @@ for layer in layers:
 # propose numbered list of KLEi names
 # Write new mapping to file immediately, so manual entry can be paused and continued when code exits
 # TODO: Should I map names automatically if they exist in KLEi names set? Or enforce manual choices?
-# TODO: Read file to make dictionary that maps MAC to KLEi names, where they have been entered already
+
+# Make temporary mapping file, to allow interruption of manual data entry. Read this file if it already exists.
+tmp_mapping_file = "tmp_mapping.csv"
 mapping = dict()
-with open("mac_to_klei.txt", "w") as f:
+if Path(tmp_mapping_file).exists():
+    # Read mapping to dictionary
+    with open(tmp_mapping_file, "r") as f:
+        f.readline()  # Skip headers
+        for line in f.readlines():
+            geom_type, source, target = [x.strip() for x in line.split(separator)]
+            if geom_type not in mapping.keys():
+                mapping[geom_type] = dict()
+            mapping[geom_type][source] = target
+    print(f"Reading existing tmp_mapping file: {mapping}\n")
+else:
+    # Make mapping file with headers
+    with open(tmp_mapping_file, "w") as f:
+        f.write(separator.join(["geom_type", "source", "target"]) + "\n")
+        print("Created new tmp_mapping file")
+
+# Append new mappings to temporary mapping file
+with open(tmp_mapping_file, "a") as f:
     for geom_type in names.keys():
+        if geom_type not in mapping.keys():
+            mapping[geom_type] = dict()
         for name in names[geom_type]:
+            # TODO: don't request repeat entry for existing items
             # Propose numbered list of KLEi names to choose from
             options = ["###-nader_bepalen", "###-laten_vervallen"] + klei_names[geom_type]
             for number, option in enumerate(options):
                 print(f"{number}: {option}")
             # TODO: handle incorrect user input elegantly
             choice = input(f"What KLEi name does {list(name.keys())[0]} correspond to? Pick a number listed above and press enter:")
-            print(f"{list(name.keys())[0]} is now mapped to {options[int(choice)]} for geom_type {geom_type}.")
-            # TODO: the actual mapping and writing to file
+            mapping[geom_type][(source := list(name.keys())[0])] = (target := options[int(choice)])
+            f.write(separator.join([geom_type, source, target]) + "\n")
+            print(f"{list(name.keys())[0]} is now mapped to {options[int(choice)]} for geom_type {geom_type}.\n")
 
 
 # Write a CSV file showing source names for all geom_types, indicating whether these are shared by all layers
 # of this geom_type, along with proposed target (KLEi) name
-separator = ";"  # CSV separator for Excel readability
-with open("mapping.csv", "w") as f:
+mapping_file = "mapping.csv"
+with open(mapping_file, "w") as f:
     # Write CSV headers
     f.write(separator.join(["geom_type", "source", "target", "common"]) + "\n")
     for geom_type in names.keys():
