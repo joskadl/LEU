@@ -78,16 +78,17 @@ with open(tmp_mapping_file, "a") as f:
         if geom_type not in mapping.keys():
             mapping[geom_type] = dict()
         for name in names[geom_type]:
-            # TODO: don't request repeat entry for existing items
-            # Propose numbered list of KLEi names to choose from
-            options = ["###-nader_bepalen", "###-laten_vervallen"] + klei_names[geom_type]
-            for number, option in enumerate(options):
-                print(f"{number}: {option}")
-            # TODO: handle incorrect user input elegantly
-            choice = input(f"What KLEi name does {list(name.keys())[0]} correspond to? Pick a number listed above and press enter:")
-            mapping[geom_type][(source := list(name.keys())[0])] = (target := options[int(choice)])
-            f.write(separator.join([geom_type, source, target]) + "\n")
-            print(f"{list(name.keys())[0]} is now mapped to {options[int(choice)]} for geom_type {geom_type}.\n")
+            if (source := list(name.keys())[0]) not in mapping[geom_type].keys():
+                # Propose numbered list of KLEi names to choose from
+                options = ["###-nader_bepalen", "###-laten_vervallen"] + klei_names[geom_type]
+                for number, option in enumerate(options):
+                    print(f"{number}: {option}")
+                # TODO: handle incorrect user input elegantly
+                choice = input(f"What KLEi name does {source} correspond to for geom_type {geom_type}? "
+                               f"Pick a number listed above and press enter:")
+                mapping[geom_type][source] = (target := options[int(choice)])
+                f.write(separator.join([geom_type, source, target]) + "\n")
+                print(f"{source} is now mapped to {target} for geom_type {geom_type}.\n")
 
 
 # Write a CSV file showing source names for all geom_types, indicating whether these are shared by all layers
