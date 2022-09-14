@@ -94,15 +94,18 @@ with open(tmp_mapping_file, "a") as f:
 # Write a CSV file showing source names for all geom_types, indicating whether these are shared by all layers
 # of this geom_type, along with proposed target (KLEi) name
 mapping_file = "mapping.csv"
+print(f"Writing mapping file: {mapping_file}")
 with open(mapping_file, "w") as f:
     # Write CSV headers
     f.write(separator.join(["geom_type", "source", "target", "common"]) + "\n")
     for geom_type in names.keys():
         for name in names[geom_type]:
-            # TODO: include target name in CSV
+            source = list(name.keys())[0]
+            source_commonality = list(name.values())[0]
+            target = mapping[geom_type][source]
             f.write(
                 separator.join(
-                    [geom_type, list(name.keys())[0], "N/A", list(name.values())[0]]
+                    [geom_type, source, target, source_commonality]
                 )
                 + "\n"
             )
