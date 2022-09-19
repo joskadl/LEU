@@ -1,3 +1,0 @@
-Point:Naam,Monitoring,Hoogte,Lengte,Aantal,Volledigheid,Soort1,Percentage1,Soort2,Percentage2,Soort3,Percentage3,Vitaal,Datum,Opmerkingfaq,Opmerking
-MultiLineString:Naam,Monitoring,Hoogte,Breedte,Aantal,Volledigheid,Soort1,Percentage1,Soort2,Percentage2,Soort3,Percentage3,Vitaal,Opmerkingfaq,Datum,Opmerking,SHAPE_Length
-MultiPolygon:Naam,Monitoring,Hoogte,Aantal,Volledigheid,Soort1,Percentage1,Soort2,Percentage2,Soort3,Percentage3,Vitaal,Datum,Opmerkingfaq,Opmerking,SHAPE_Length,SHAPE_Area
