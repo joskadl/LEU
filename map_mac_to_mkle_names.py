@@ -6,8 +6,8 @@ import fiona
 
 # Note: this script requires to be run from a conda virtual environment
 
-# TODO: this should be a loop over all relevant .gdb files later (and shapefiles?)
-gdb_file = "./MAC2020_totaal.gdb/"
+data_directory = Path(r"C:\Users\jla23480\Downloads\Data")
+gdb_files = [x for x in (data_directory.glob("**/*")) if x.suffix == ".gdb"]
 klei_names_file = "./python_scripts/klei_names.txt"
 separator = ";"  # CSV separator for Excel readability
 
@@ -18,35 +18,35 @@ with open(klei_names_file) as f:
         for line in f.readlines()
     }
 
-# Find all layers in a given .gdb file
-layers = fiona.listlayers(gdb_file)
 
 # Make a dictionary that links geom_type to used names in layer:
 # {"Point": [{"GlobalID": "common"}, {'Gelaagdhei': 'not common'},  ...]}
 names = dict()
-for layer in layers:
-    layer_content = gpd.read_file(gdb_file, layer=layer)
-    # Ignore layers without geom_type
-    if len(layer_content.geom_type) > 0 and layer_content.geom_type[0] is not None:
-        geom_type = layer_content.geom_type[0]
-        if geom_type not in names:
-            names[geom_type] = [
-                {column_name: "common"} for column_name in layer_content.columns
-            ]
-        else:
-            # The intersection of existing common column names and new column names will be marked "common"
-            common_columns = set(
-                list(x.keys())[0] if list(x.values())[0] == "common" else None
-                for x in names[geom_type]
-            ).intersection(set(layer_content.columns))
-            # Iterate over combination of existing and new columns. Assign value "not common" unless in common_columns
-            all_columns = {list(x.keys())[0] for x in names[geom_type]}.union(
-                set(layer_content.columns)
-            )
-            names[geom_type] = [
-                {x: "common" if x in common_columns else "not common"}
-                for x in all_columns
-            ]
+for gdb_file in gdb_files:
+    print(f"Analyzing gdb file: {gdb_file}")
+    for layer in fiona.listlayers(gdb_file):
+        layer_content = gpd.read_file(gdb_file, layer=layer)
+        # Ignore layers without geom_type
+        if len(layer_content.geom_type) > 0 and layer_content.geom_type[0] is not None:
+            geom_type = layer_content.geom_type[0]
+            if geom_type not in names:
+                names[geom_type] = [
+                    {column_name: "common"} for column_name in layer_content.columns
+                ]
+            else:
+                # The intersection of existing common column names and new column names will be marked "common"
+                common_columns = set(
+                    list(x.keys())[0] if list(x.values())[0] == "common" else None
+                    for x in names[geom_type]
+                ).intersection(set(layer_content.columns))
+                # Iterate over combination of existing and new columns. Assign value "not common" unless in common_columns
+                all_columns = {list(x.keys())[0] for x in names[geom_type]}.union(
+                    set(layer_content.columns)
+                )
+                names[geom_type] = [
+                    {x: "common" if x in common_columns else "not common"}
+                    for x in all_columns
+                ]
 
 # Make a dictionary that maps found names to acceptable KLEi target names (or ###-nader_bepalen or ###-laten_vervallen)
 # Loop over found names for each geom_type, and if no mapping found for that name+geom_type,
