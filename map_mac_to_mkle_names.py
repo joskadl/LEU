@@ -6,9 +6,13 @@ import fiona
 
 # Note: this script requires to be run from a conda virtual environment
 
+# Path to source files:
 data_directory = Path(r"C:\Users\jla23480\Downloads\Data")
+mkle_names_file = "./python_scripts/mkle_names.txt"
+
+# Find all .gdb files in data directory
 gdb_files = [x for x in (data_directory.glob("**/*")) if x.suffix == ".gdb"]
-klei_names_file = "./python_scripts/klei_names.txt"
+
 # Some .gdb files may need to be ignored in further analysis.
 # Leave the list below empty, or list your own files to ignore
 files_to_ignore = [
@@ -25,19 +29,20 @@ for f in files_to_ignore:
 
 separator = ";"  # CSV separator for Excel readability
 
-# Make dictionary linking 'Point', 'MultiLineString' and 'MultiPolygon' to their KLEi target names
-with open(klei_names_file) as f:
-    klei_names = {
+# Make a dictionary linking 'Point', 'MultiLineString' and 'MultiPolygon' to their allowed MKLE target names
+with open(mkle_names_file) as f:
+    mkle_names = {
         line.split(":")[0]: [x.strip() for x in line.split(":")[1].split(",")]
         for line in f.readlines()
     }
 
 
-# Make a dictionary that links geom_type to used names in layer:
+# Make a dictionary that links geom_type to used names in each layer of that type for all .gdb files.
+# Names that occur for all layers of a geom_type are marked 'common' - the other ones 'not common':
 # {"Point": [{"GlobalID": "common"}, {'Gelaagdhei': 'not common'},  ...]}
 names = dict()
 for gdb_file in gdb_files:
-    print(f"Analyzing gdb file: {gdb_file}")
+    print(f"Analyzing .gdb file: {gdb_file}")
     for layer in fiona.listlayers(gdb_file):
         layer_content = gpd.read_file(gdb_file, layer=layer)
         # Ignore layers without geom_type
@@ -53,7 +58,8 @@ for gdb_file in gdb_files:
                     list(x.keys())[0] if list(x.values())[0] == "common" else None
                     for x in names[geom_type]
                 ).intersection(set(layer_content.columns))
-                # Iterate over combination of existing and new columns. Assign value "not common" unless in common_columns
+                # Iterate over combination of existing and new columns.
+                # Assign value "not common" unless in common_columns
                 all_columns = {list(x.keys())[0] for x in names[geom_type]}.union(
                     set(layer_content.columns)
                 )
@@ -62,16 +68,11 @@ for gdb_file in gdb_files:
                     for x in all_columns
                 ]
 
-# Make a dictionary that maps found names to acceptable KLEi target names (or ###-nader_bepalen or ###-laten_vervallen)
-# Loop over found names for each geom_type, and if no mapping found for that name+geom_type,
-# propose numbered list of KLEi names
-# Write new mapping to file immediately, so manual entry can be paused and continued when code exits
-
-# Make temporary mapping file, to allow interruption of manual data entry. Read this file if it already exists.
+# Read temporary mapping file if it already exists, and store as dictionary. Make this file if it's not there yet.
+# This file allows the user to abort the script during data entry, and pick up again where they left off.
 tmp_mapping_file = "tmp_mapping.csv"
 mapping = dict()
 if Path(tmp_mapping_file).exists():
-    # Read mapping to dictionary
     with open(tmp_mapping_file, "r") as f:
         f.readline()  # Skip headers
         for line in f.readlines():
@@ -86,15 +87,18 @@ else:
         f.write(separator.join(["geom_type", "source", "target"]) + "\n")
         print("Created new tmp_mapping file")
 
-# Append new mappings to temporary mapping file
+# Loop over names from each layer of listed .gdb files.
+# If no mapping is found for a name+geom_type, propose numbered choices of MKLE target names to user.
+# ("###-nader_bepalen" and "###-laten_vervallen" are added to these choices)
+# Append new mappings to the temporary mapping file.
 with open(tmp_mapping_file, "a") as f:
     for geom_type in names.keys():
         if geom_type not in mapping.keys():
             mapping[geom_type] = dict()
         for name in names[geom_type]:
             if (source := list(name.keys())[0]) not in mapping[geom_type].keys():
-                # Propose numbered list of KLEi names to choose from
-                options = ["###-nader_bepalen", "###-laten_vervallen"] + klei_names[
+                # Propose numbered list of MKLE names to choose from
+                options = ["###-nader_bepalen", "###-laten_vervallen"] + mkle_names[
                     geom_type
                 ]
                 for number, option in enumerate(options):
@@ -106,7 +110,7 @@ with open(tmp_mapping_file, "a") as f:
                     try:
                         choice = int(
                             input(
-                                f"What KLEi name does {source} correspond to for geom_type {geom_type}? "
+                                f"What MKLE name does {source} correspond to for geom_type {geom_type}? "
                                 f"Pick a number listed above and press enter:"
                             )
                         )
@@ -127,8 +131,8 @@ with open(tmp_mapping_file, "a") as f:
                 )
 
 
-# Write a CSV file showing source names for all geom_types, indicating whether these are shared by all layers
-# of this geom_type, along with proposed target (KLEi) name
+# Write a CSV file with the user-defined mapping of MAC-names to MKLE-names for each geom_type.
+# The "common" column indicates whether a specific source name occurs in all layers of this geom_type.
 mapping_file = "mapping.csv"
 print(f"Writing mapping file: {mapping_file}")
 with open(mapping_file, "w") as f:
@@ -142,20 +146,3 @@ with open(mapping_file, "w") as f:
             f.write(
                 separator.join([geom_type, source, target, source_commonality]) + "\n"
             )
-
-
-"""
-TODO:
-- This script should yield a CSV file with the mapping from used (MAC) names to desired (KLEi) names
-- The column headers for this file will be as follows:
-  - 'geom_type': indicates the type of the layer ('points', 'lines', or 'polygons')
-  - 'source': the column names used in the source data
-  - 'target': the MKLE-name to which this source name should map (from KLEi set)
-  - 'common': indicates whether or not this source name occurs in all source data of the current geom_type
-
-Notes:
-- Using a command line interface, users will be prompted to pick (numerically) 
-  which KLEi-name a source name should be mapped to
-  - Answers are stored in a mapping file, to save time when running this script again
-  - This mapping file will be in plain-text, and can be checked or amended manually if needed
-"""
