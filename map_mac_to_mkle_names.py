@@ -9,6 +9,20 @@ import fiona
 data_directory = Path(r"C:\Users\jla23480\Downloads\Data")
 gdb_files = [x for x in (data_directory.glob("**/*")) if x.suffix == ".gdb"]
 klei_names_file = "./python_scripts/klei_names.txt"
+# Some .gdb files may need to be ignored in further analysis.
+# Leave the list below empty, or list your own files to ignore
+files_to_ignore = [
+    Path(r'C:/Users/jla23480/Downloads/Data/Data/Levering 2012/Flevoland/MAC Flevoland 2012/gebieden.gdb'),
+    Path(r'C:/Users/jla23480/Downloads/Data/Data/Levering 2017/Gelderland/20171218_opleveringveldwerkGE.gdb'),
+    Path(r"C:\Users\jla23480\Downloads\Data\Data\Levering 2017\Gelderland\20171218_opleveringveldwerkGE_zonderdomains.gdb"),
+    Path(r"C:\Users\jla23480\Downloads\Data\Data\Levering 2017\Groningen\mac_2015-2019_ontvangst_data_na_veldwerk2017_gr_slgr.gdb"),
+    Path(r"C:\Users\jla23480\Downloads\Data\Data\Levering 2017\Groningen\mac_2015-2019_ontvangst_data_na_veldwerk2017_gr_slgr.gdb\mac_2015-2019_ontvangst_data_na_veldwerk2017_gr_slgr.gdb"),
+    Path(r"C:\Users\jla23480\Downloads\Data\Data\Levering 2017\Zeeland\MAC_ZL06_veldwerk2017_nacontrole20180109.gdb"),
+]
+for f in files_to_ignore:
+    if f in gdb_files:
+        gdb_files.remove(f)
+
 separator = ";"  # CSV separator for Excel readability
 
 # Make dictionary linking 'Point', 'MultiLineString' and 'MultiPolygon' to their KLEi target names
