@@ -29,12 +29,9 @@ for f in files_to_ignore:
 
 separator = ";"  # CSV separator for Excel readability
 
-# Make a dictionary linking 'Point', 'MultiLineString' and 'MultiPolygon' to their allowed MKLE target names
+# Make a list of all allowed MKLE target names
 with open(mkle_names_file) as f:
-    mkle_names = {
-        line.split(":")[0]: [x.strip() for x in line.split(":")[1].split(",")]
-        for line in f.readlines()
-    }
+    mkle_names = [x.strip() for x in f.readline().split(",")]
 
 
 # Make a dictionary that links geom_type to used names in each layer of that type for all .gdb files.
@@ -98,9 +95,7 @@ with open(tmp_mapping_file, "a") as f:
         for name in names[geom_type]:
             if (source := list(name.keys())[0]) not in mapping[geom_type].keys():
                 # Propose numbered list of MKLE names to choose from
-                options = ["###-nader_bepalen", "###-laten_vervallen"] + mkle_names[
-                    geom_type
-                ]
+                options = ["###-nader_bepalen", "###-laten_vervallen"] + mkle_names
                 for number, option in enumerate(options):
                     print(f"{number}: {option}")
 
