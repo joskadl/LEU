@@ -5,6 +5,7 @@ from typing import List
 
 import geopandas as gpd
 import fiona
+from shapely.geometry import Polygon, Point
 
 """
 Goals:
@@ -71,6 +72,7 @@ Plan:
       Use geopandas.GeoSeries.contains(Point) https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.contains.html
 - Once missing data is added, write back to GeoPackage or FileGeoDatabase file
 
+Question: An area (e.g. for GR-06) seems to have as many polygons as points (may or may not be universal). Why? What do?
 Question: Do I need to convert MultiPolygon to GeoSeries of Polygon objects? -> probably
 Question: It looks like the point coordinates are indeed quite different from those of the polygons. Why?
     Log on to arcgis.com and confirm coordinates? Different projection?
@@ -80,23 +82,21 @@ Question: What to do with polygons that don't have area code?
 Question: Is it enough to fix area codes for points, or is this also needed for polygons?
 """
 
-# TODO: Below we're confirming that the points for a specific area fall within the polygon(s) for that area code:
-
+# Confirm that points for an area fall within the polygons for that area
 area_code = "GR-06"  # TODO: This is a random single area code for development purposes. Loop/make general later.
 polygons_in_area = gpd.GeoSeries(return_first_element_of_single_element_list(list(p)) for p in polygon_areas[area_code])
 # TODO: do I only need first element of list(p)? And is it actually required that this list only has one element?
 #   GR-03 has a list(p) for an area, which has multiple elements. How to treat this?
 points_in_area = point_areas[area_code]
 
-# TODO: an area seems to have as many polygons as points (may or may not be universal). Why? What do?
+# What are the bounding boxes/coordinates of the found polygons and points? Comment answers are for GR-06
+print(f"{[p.bounds for p in polygons_in_area]=}")
+# [(217398, 574864, 217419, 574880), (217657, 574806, 217672, 574830), (217146, 574590, 217179, 574665)]
+print(f"{[p.bounds for p in points_in_area]=}")
+# [(178087, 486157), (178066, 486177), (177966, 486067)]
+# TODO: coordinates for polygons and areas are wildly different. Why? Check in ArcGis?
 
 for point in points_in_area:
     # Check whether point falls in one of polygons
     print(True in [polygon.contains(point) for polygon in polygons_in_area])
-
-    # TODO: this only gives 'False' results. Why?
-    #   Try making simple point and polygon to check whether this works.
-    #   (If needed, use online ArcGIS)
-
-
-
+    # TODO: this results in False for all points, because of different coordinates mentioned above. Fix this somehow.
