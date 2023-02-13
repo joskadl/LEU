@@ -1,11 +1,9 @@
 # Note: this script requires to be run from a conda virtual environment with below packages installed
 
 from pathlib import Path
-from typing import List
 
 import geopandas as gpd
 import fiona
-from shapely.geometry import Polygon, Point
 
 """
 Goals:
@@ -15,8 +13,8 @@ Goals:
 
 file_to_fix = Path(r"Monitoring-ronde1-totaal.gdb")  # TODO: loop over all files later
 
-
 def find_polygon_and_point_layers(file: Path):
+    # Note: this assumes only one polygon layer and one point layer is in file, as first of each is returned
     for layer in fiona.listlayers(file):
         layer_content = gpd.read_file(file, layer=layer)
         layer_geom_type = layer_content.geom_type.values[0]
@@ -29,7 +27,7 @@ def find_polygon_and_point_layers(file: Path):
 
 def map_areas_to_polygons(polygon_layer):
     polygon_areas = {} # A dictionary of area codes linked to a list of MULTIPOLYGON objects
-    # TODO: account for missing areas? Some are listed as ' ' (130 polygons) and some as None (42 polygons)
+    # TODO: account for missing areas? Some are mapped to ' ' and some to None
     for area, polygon in zip(polygon_layer["GEB"], polygon_layer.geometry):
         if area not in polygon_areas.keys():
             polygon_areas[area] = [polygon]
@@ -39,8 +37,8 @@ def map_areas_to_polygons(polygon_layer):
 
 
 def map_areas_to_points(point_layer):
-    point_areas = {} # A dictionary of area codes linked to a list of POINT objects
-    for area, point in zip(polygon_layer["GEB"], point_layer.geometry):
+    point_areas = {} # A dictionary of area codes each linked to a list of POINT objects
+    for area, point in zip(point_layer["GEB"], point_layer.geometry):
         if area not in point_areas.keys():
             point_areas[area] = [point]
         else:
@@ -48,14 +46,17 @@ def map_areas_to_points(point_layer):
     return point_areas
 
 
-def return_first_element_of_single_element_list(l: List):
-    """Confirm list has only one element before returning it"""
-    if len(l) == 1:
-        return l[0]
-    else:
-        print(f"More than one element found in list: {l}")
-        # raise Exception("Single element list expected, but multiple elements found.")
+"""
+Plan:
+- Find out whether all points without area code fall within a polygon that does have an area code. Assign area if so.
+    - As a sanity check, confirm that points with an area code fall within polygon with same area code
+      Use geopandas.GeoSeries.contains(Point) https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.contains.html
+- Once missing data is added, write back to GeoPackage or FileGeoDatabase file
 
+Question: There are some area codes without hyphenation (e.g. GR05). Should I merge these with hyphenated codes (e.g. GR-05)?
+Question: What to do with polygons that don't have area code? 
+    - Is it enough to fix area codes for points, or is this also needed for polygons?
+"""
 
 # Extract polygon and point layers, and map area codes to polygons and points
 polygon_layer, point_layer = find_polygon_and_point_layers(file_to_fix)
@@ -65,38 +66,10 @@ point_areas = map_areas_to_points(point_layer)
 # Find points without assigned area code
 points_without_area_code = point_areas[" "] + point_areas[None]
 
-"""
-Plan:
-- Find out whether all points without area code fall within a polygon that does have an area code. Assign area if so.
-    - As a sanity check, confirm that points with an area code fall within polygon with same area code
-      Use geopandas.GeoSeries.contains(Point) https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.contains.html
-- Once missing data is added, write back to GeoPackage or FileGeoDatabase file
+# Confirm that points for an area fall within the (multi)polygons for that area
+area_code = "GR-03"  # TODO: This is a random single area code for development purposes. Loop/make general later.
 
-Question: An area (e.g. for GR-06) seems to have as many polygons as points (may or may not be universal). Why? What do?
-Question: Do I need to convert MultiPolygon to GeoSeries of Polygon objects? -> probably
-Question: It looks like the point coordinates are indeed quite different from those of the polygons. Why?
-    Log on to arcgis.com and confirm coordinates? Different projection?
-Question: Does it make sense that we have multiple polygons for each area code? e.g. 19 times 'OV-07'?
-Question: There are some area codes without hyphenation (e.g. GR05). Should I merge these with hyphenated codes (e.g. GR-05)?
-Question: What to do with polygons that don't have area code?
-Question: Is it enough to fix area codes for points, or is this also needed for polygons?
-"""
-
-# Confirm that points for an area fall within the polygons for that area
-area_code = "GR-06"  # TODO: This is a random single area code for development purposes. Loop/make general later.
-polygons_in_area = gpd.GeoSeries(return_first_element_of_single_element_list(list(p)) for p in polygon_areas[area_code])
-# TODO: do I only need first element of list(p)? And is it actually required that this list only has one element?
-#   GR-03 has a list(p) for an area, which has multiple elements. How to treat this?
-points_in_area = point_areas[area_code]
-
-# What are the bounding boxes/coordinates of the found polygons and points? Comment answers are for GR-06
-print(f"{[p.bounds for p in polygons_in_area]=}")
-# [(217398, 574864, 217419, 574880), (217657, 574806, 217672, 574830), (217146, 574590, 217179, 574665)]
-print(f"{[p.bounds for p in points_in_area]=}")
-# [(178087, 486157), (178066, 486177), (177966, 486067)]
-# TODO: coordinates for polygons and areas are wildly different. Why? Check in ArcGis?
-
-for point in points_in_area:
-    # Check whether point falls in one of polygons
-    print(True in [polygon.contains(point) for polygon in polygons_in_area])
-    # TODO: this results in False for all points, because of different coordinates mentioned above. Fix this somehow.
+for point in point_areas[area_code]:
+    # Check whether point falls in one of multipolygons
+    print(True in [point.within(multipolygon) for multipolygon in polygon_areas[area_code]])
+    # TODO: Some are True, but many are False. What is happening?
