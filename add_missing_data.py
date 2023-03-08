@@ -9,6 +9,7 @@ import fiona
 Goals:
 - Fill in missing area codes for points and polygons
 - Then, change 1899 and null dates to first july of the year that area was monitored
+- Fill in above missing data, and write back to __fixed.gdb file
 """
 
 file_to_fix = Path(r"MAC-data-totaal-feb-2023.gdb")
@@ -40,63 +41,55 @@ def get_area_polygons(file, layer):
     return areas
 
 
-def map_areas_to_polygons(polygon_layer):
-    polygon_areas = {} # A dictionary of area codes linked to a list of MULTIPOLYGON objects
-    # TODO: account for missing areas? Some are mapped to ' ' and some to None
-    for area, polygon in zip(polygon_layer["GEB"], polygon_layer.geometry):
-        if area not in polygon_areas.keys():
-            polygon_areas[area] = [polygon]
+def map_areas_to_geometry(layer):
+    """Takes a layer of geometry type (e.g. points or polygons) and iterates over rows, adding geometry object to
+    list of values for a key corresponding to the area code
+    """
+    geometry_areas = {} # A dictionary of area codes linked to a list of geometry objects
+    for area, geometry in zip(layer["GEB"], layer.geometry):
+        if area not in layer.keys():
+            geometry_areas[area] = [geometry]
         else:
-            polygon_areas[area].append(polygon)
-    return polygon_areas
+            geometry_areas[area].append(geometry)
+    return geometry_areas
 
 
-def map_areas_to_points(point_layer):
-    point_areas = {} # A dictionary of area codes each linked to a list of POINT objects
-    for area, point in zip(point_layer["GEB"], point_layer.geometry):
-        if area not in point_areas.keys():
-            point_areas[area] = [point]
-        else:
-            point_areas[area].append(point)
-    return point_areas
-
-
-"""
-Plan:
-- Find out whether all points/polygons without area code fall within a polygon that does have an area code. Assign area if so.
-    - As a sanity check, confirm that points with an area code fall within polygon with same area code
-      Use geopandas.GeoSeries.contains(Point) https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.contains.html
-- Once missing data is added, write back to GeoPackage or FileGeoDatabase file
-
-Question: There are some area codes without hyphenation (e.g. GR05). Should I merge these with hyphenated codes (e.g. GR-05)?
-"""
+# TODO: Question: There are some area codes without hyphenation (e.g. GR05).
+#  Should I merge these with hyphenated codes (e.g. GR-05)?
 
 # Extract names of polygon and point layers
 polygon_and_point_layers = find_polygon_and_point_layers(file_to_fix)
 
+# TODO: we use a single monitoring round below. This should later be a loop over all monitoring rounds
+points_nulmetingen_df = polygon_and_point_layers["points"]["Puntelementen_nulmetingen_totaal"]
+
+'''
+# Sanity check: Confirm that points with area code 'GR-03' fall within area_polygon with area code 'GR-03'
+  # This is the case for vast majority of points. Same for area GR-04
+
+area_polygons = get_area_polygons(file_to_fix, areas_layer)
+area_code = 'GR-04'
+area_polygon = area_polygons[area_code].values[0]
+for point in points_nulmetingen_df.loc[points_nulmetingen_df["GEB"] == area_code].iterrows():
+    print(point[-1]['geometry'].within(area_polygon))  # Confirm point falls within polygon for indicated area
+'''
+
 # Get the polygons corresponding to measurement areas
 area_polygons = get_area_polygons(file_to_fix, areas_layer)
 
-# Sanity check: Confirm that points with area code 'GR-03' fall within area_polygon with area code 'GR-03'
-  # This is the case for vast majority of points. Same for area GR-04
-area_code = 'GR-03'
-area_polygon = area_polygons[area_code].values[0]
-points_nulmetingen_df = polygon_and_point_layers["points"]["Puntelementen_nulmetingen_totaal"]
-for point in points_nulmetingen_df.loc[points_nulmetingen_df["GEB"] == area_code].iterrows():
-    # print(point[-1]['geometry'].within(area_polygon))  # Confirm point falls within polygon for indicated area
-    pass
-
 # Loop over all points without area code
-#   TODO: should I check for None as well as " "?
+# TODO: should I check for area values such as None as well as " "?
+#   Or: check for any "GEB" value which does not contain letters (or is 'Falsy'). Regular expressions?
 for point in points_nulmetingen_df.loc[points_nulmetingen_df["GEB"] == " "].iterrows():
-    point = point[-1]["geometry"]
+    point_geometry = point[-1]["geometry"]
     # Check whether point falls within any polygon belonging to a measurement area
     for area in area_polygons.keys():
-        if point.within(area_polygons[area].values[0]):
+        if point_geometry.within(area_polygons[area].values[0]):
             # Assign area code of the area_polygon it falls within
-            print(f"Point {point} falls within area {area}")
-            # TODO: assign area code to point
+            print(f"Point {point_geometry} falls within area {area}")
+            # TODO: assign area code to point (how?)
 
 # TODO: Do the same for polygons
 # TODO: Also add missing dates: check for relevant measurement round what year an area was monitored
+# TODO: Iterate over all measurement rounds (not just 'Nulmetingen')
 # TODO: Write all these back to a GDB file
